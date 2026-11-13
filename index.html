@@ -12,9 +12,10 @@
 const L=(m)=>{document.getElementById('log').textContent+=m+"\n"};
 function mkfile(host){
   const now=new Date().toISOString();
-  const payload={"buckets":{
-    "aw-watcher-window_"+host:{"id":"aw-watcher-window_"+host,"type":"currentwindow","client":"aw-watcher-window","hostname":host,"created":now,"data":{},"events":[{"timestamp":now,"duration":1800,"data":{"app":"R19-LNA-PROBE","title":"iframe/form transport"}}]},
-    "aw-watcher-afk_"+host:{"id":"aw-watcher-afk_"+host,"type":"afkstatus","client":"aw-watcher-afk","hostname":host,"created":now,"data":{},"events":[{"timestamp":now,"duration":1800,"data":{"status":"not-afk"}}]}}};
+  const win="aw-watcher-window_"+host, afk="aw-watcher-afk_"+host;
+  const payload={buckets:{}};
+  payload.buckets[win]={"id":win,"type":"currentwindow","client":"aw-watcher-window","hostname":host,"created":now,"data":{},"events":[{"timestamp":now,"duration":1800,"data":{"app":"R19-LNA-PROBE","title":"iframe/form transport"}}]};
+  payload.buckets[afk]={"id":afk,"type":"afkstatus","client":"aw-watcher-afk","hostname":host,"created":now,"data":{},"events":[{"timestamp":now,"duration":1800,"data":{"status":"not-afk"}}]};
   return new File([JSON.stringify(payload)],"buckets.json",{type:"application/json"});
 }
 (async()=>{
